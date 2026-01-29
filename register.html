@@ -1,1 +1,69 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFC-BD Registration</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
 
+    <div class="app-container">
+        <div class="auth-box">
+            <h1 class="logo-text">FFC-BD</h1>
+            <p class="sub-text">নতুন একাউন্ট তৈরি করুন</p>
+
+            <form id="regForm">
+                <div class="input-group">
+                    <label>ইউজারনেম (Username)</label>
+                    <input type="text" id="regUser" placeholder="ইংরেজিতে নাম লিখুন (Ex: Joy123)" required>
+                </div>
+
+                <div class="input-group">
+                    <label>পাসওয়ার্ড (Password)</label>
+                    <input type="password" id="regPass" placeholder="পাসওয়ার্ড দিন" required>
+                </div>
+
+                <div class="input-group">
+                    <label>কনফার্ম পাসওয়ার্ড (Confirm Password)</label>
+                    <input type="password" id="regPassConfirm" placeholder="পাসওয়ার্ড আবার দিন" required>
+                </div>
+
+                <button type="submit" class="btn-primary">রেজিস্ট্রেশন করুন</button>
+            </form>
+
+            <p class="link-text">
+                আগেই একাউন্ট আছে? <a href="index.html">লগইন করুন</a>
+            </p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { firebaseConfig } from './js/config.js';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const user = document.getElementById('regUser').value.trim();
+            const pass = document.getElementById('regPass').value.trim();
+            const confirmPass = document.getElementById('regPassConfirm').value.trim();
+
+            // Validation
+            if (pass !== confirmPass) {
+                alert("পাসওয়ার্ড দুটি মিলছে না!");
+                return;
+            }
+            if (pass.length < 6) {
+                alert("পাসওয়ার্ড অন্তত ৬ সংখ্যার হতে হবে।");
+                return;
+            }
+
+            // Fake
