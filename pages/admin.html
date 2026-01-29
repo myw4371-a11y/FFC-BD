@@ -1,1 +1,184 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFC-BD Admin Panel</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-nav { display: flex; overflow-x: auto; background: #222; padding: 10px; gap: 10px; }
+        .nav-btn { padding: 8px 15px; background: #333; border-radius: 5px; white-space: nowrap; cursor: pointer; font-size: 13px; }
+        .nav-btn.active { background: #ff9800; color: #000; }
+        .section { display: none; padding: 15px; }
+        .section.active { display: block; }
+        .card { background: #252525; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
+        select, input, textarea { width: 100%; padding: 10px; margin-bottom: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 5px; }
+    </style>
+</head>
+<body>
 
+    <div class="app-container">
+        <div style="background: #1a1a1a; padding: 15px; text-align: center; border-bottom: 2px solid #ff9800;">
+            <h3>FFC-BD Admin Panel</h3>
+            <button onclick="logout()" style="font-size: 11px; color: #ff5555; background: none; border: none; cursor: pointer;">লগ আউট</button>
+        </div>
+
+        <div class="admin-nav">
+            <div class="nav-btn active" onclick="showSec('matches')">ম্যাচ অ্যাড</div>
+            <div class="nav-btn" onclick="showSec('users')">ইউজার ব্যালেন্স</div>
+            <div class="nav-btn" onclick="showSec('settings')">সেটিংস</div>
+        </div>
+
+        <div id="matches" class="section active">
+            <h4>নতুন টুর্নামেন্ট বক্স</h4>
+            <div class="card">
+                <select id="mType">
+                    <option value="BR">BR Tournament</option>
+                    <option value="CS">CS Tournament</option>
+                    <option value="LONE">Lone Wolf</option>
+                </select>
+                <input type="text" id="mTime" placeholder="সময় (Ex: 08:30 PM)">
+                <input type="text" id="mDate" placeholder="তারিখ (Ex: 25 Jan)">
+                <input type="text" id="mMap" placeholder="ম্যাপের নাম">
+                <input type="number" id="mFee" placeholder="এন্ট্রি ফি (৳)">
+                <input type="number" id="mLimit" placeholder="প্লেয়ার লিমিট (Ex: 48)">
+                <button class="btn-primary" onclick="addMatch()">পাবলিশ করুন</button>
+            </div>
+            <h4>চলমান ম্যাচগুলো</h4>
+            <div id="admin-match-list"></div>
+        </div>
+
+        <div id="users" class="section">
+            <h4>ব্যালেন্স অ্যাড/এডিট</h4>
+            <div class="card">
+                <input type="text" id="searchUser" placeholder="ইউজারনেম দিয়ে খুঁজুন">
+                <button class="btn-primary" onclick="searchUser()">ইউজার খুঁজুন</button>
+            </div>
+            <div id="user-result" class="card" style="display: none;">
+                <p>ইউজার: <span id="uName">...</span></p>
+                <p>বর্তমান ব্যালেন্স: ৳<span id="uBal">0</span></p>
+                <input type="number" id="newBal" placeholder="নতুন ব্যালেন্স লিখুন">
+                <button class="btn-primary" style="background: #44ff44; color: #000;" onclick="updateBalance()">ব্যালেন্স সেভ করুন</button>
+            </div>
+        </div>
+
+        <div id="settings" class="section">
+            <h4>নোটিশ ও কন্টাক্ট সেটিংস</h4>
+            <div class="card">
+                <label>বিকাশ/নগদ নাম্বার</label>
+                <input type="text" id="setNum" placeholder="Send Money Number">
+                <label>টাকা অ্যাড করার নিয়মাবলী</label>
+                <textarea id="setAddNote" rows="3"></textarea>
+                <label>উইথড্র করার নিয়মাবলী</label>
+                <textarea id="setWithNote" rows="3"></textarea>
+                <button class="btn-primary" onclick="saveSettings()">সব সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove, update, query, orderByChild, equalTo, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { firebaseConfig } from '../js/config.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Security: Check Admin Role
+        if(localStorage.getItem('userRole') !== 'admin') {
+            window.location.href = '../index.html';
+        }
+
+        // --- Match Management ---
+        window.addMatch = () => {
+            const type = document.getElementById('mType').value;
+            const matchData = {
+                time: document.getElementById('mTime').value,
+                date: document.getElementById('mDate').value,
+                map: document.getElementById('mMap').value,
+                fee: parseInt(document.getElementById('mFee').value),
+                limit: parseInt(document.getElementById('mLimit').value),
+                joined: {}
+            };
+            push(ref(db, 'tournaments/' + type), matchData);
+            alert("ম্যাচ সফলভাবে অ্যাড হয়েছে!");
+        };
+
+        // Load Active Matches for deletion
+        onValue(ref(db, 'tournaments'), (snap) => {
+            const listDiv = document.getElementById('admin-match-list');
+            listDiv.innerHTML = "";
+            const data = snap.val();
+            if(!data) return;
+
+            ['BR', 'CS', 'LONE'].forEach(type => {
+                if(data[type]) {
+                    Object.keys(data[type]).forEach(id => {
+                        const m = data[type][id];
+                        listDiv.innerHTML += `
+                            <div class="card" style="font-size:12px;">
+                                [${type}] - ${m.map} (${m.time}) 
+                                <button onclick="deleteMatch('${type}','${id}')" style="color:red; float:right; background:none; border:none;">Delete</button>
+                            </div>
+                        `;
+                    });
+                }
+            });
+        });
+
+        window.deleteMatch = (type, id) => {
+            if(confirm("ম্যাচটি ডিলিট করতে চান?")) {
+                remove(ref(db, `tournaments/${type}/${id}`));
+            }
+        };
+
+        // --- User Balance Management ---
+        let targetUid = "";
+        window.searchUser = async () => {
+            const name = document.getElementById('searchUser').value.trim();
+            const usersRef = ref(db, 'users');
+            const snapshot = await get(usersRef);
+            let found = false;
+
+            snapshot.forEach((child) => {
+                if(child.val().username === name) {
+                    targetUid = child.key;
+                    document.getElementById('uName').innerText = child.val().username;
+                    document.getElementById('uBal').innerText = child.val().balance;
+                    document.getElementById('user-result').style.display = 'block';
+                    found = true;
+                }
+            });
+            if(!found) alert("ইউজার পাওয়া যায়নি!");
+        };
+
+        window.updateBalance = () => {
+            const amount = parseInt(document.getElementById('newBal').value);
+            update(ref(db, 'users/' + targetUid), { balance: amount });
+            alert("ব্যালেন্স আপডেট হয়েছে!");
+            document.getElementById('uBal').innerText = amount;
+        };
+
+        // --- Settings Management ---
+        window.saveSettings = () => {
+            update(ref(db, 'adminInfo'), {
+                bkashNumber: document.getElementById('setNum').value,
+                addNote: document.getElementById('setAddNote').value,
+                withdrawNote: document.getElementById('setWithNote').value
+            });
+            alert("সেটিংস সেভ হয়েছে!");
+        };
+
+        // Tab Switcher
+        window.showSec = (id) => {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+        };
+
+        window.logout = () => { localStorage.clear(); window.location.href = '../index.html'; };
+    </script>
+</body>
+              </html>
