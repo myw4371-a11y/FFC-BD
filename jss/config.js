@@ -9,6 +9,7 @@ const firebaseConfig = {
     messagingSenderId: "533178061001",
     appId: "1:533178061001:web:37517e33f9594290d2bd18",
     measurementId: "G-NZN55GC3KX"
+    databaseURL: "https://ffc-bd-default-rtdb.firebaseio.com/"
 };
 
 const telegramConfig = {
