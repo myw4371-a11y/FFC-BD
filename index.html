@@ -11,7 +11,7 @@
     <div class="app-container">
         <div class="auth-box">
             <h1 class="logo-text">FFC-BD</h1>
-            <p class="sub-text">Free Fire Championship Bangladesh</p>
+            <p class="sub-text">লগইন করে খেলা শুরু করুন</p>
 
             <form id="loginForm">
                 <div class="input-group">
@@ -24,77 +24,78 @@
                     <input type="password" id="loginPass" placeholder="আপনার পাসওয়ার্ড দিন" required>
                 </div>
 
-                <button type="submit" class="btn-primary">লগইন করুন</button>
+                <button type="submit" class="btn-primary" id="loginBtn">লগইন করুন</button>
             </form>
 
             <p class="link-text">
                 একাউন্ট নেই? <a href="register.html">রেজিস্ট্রেশন করুন</a>
             </p>
         </div>
-
-        <div class="dev-credit">
-            Developed by Zord Academy
-        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { firebaseConfig, adminConfig } from './js/config.js';
 
-        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlljkD4UEqNGY2N5_zkEL_r9b50HVkwKA",
+            authDomain: "ffc-bd.firebaseapp.com",
+            projectId: "ffc-bd",
+            storageBucket: "ffc-bd.firebasestorage.app",
+            messagingSenderId: "533178061001",
+            appId: "1:533178061001:web:37517e33f9594290d2bd18",
+            measurementId: "G-NZN55GC3KX",
+            databaseURL: "https://ffc-bd-default-rtdb.firebaseio.com/"
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getDatabase(app);
 
-        // Login Logic
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const btn = document.getElementById('loginBtn');
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPass').value.trim();
 
-            if (!user || !pass) {
-                alert("দয়া করে সব তথ্য পূরণ করুন");
-                return;
-            }
-
-            // Check if Admin
-            if (user === adminConfig.username && pass === adminConfig.password) {
+            // ১. অ্যাডমিন চেক (অ্যাডমিন ইউজারনেম ও পাসওয়ার্ড)
+            if (user === "admin" && pass === "ffcbd2025") {
                 localStorage.setItem('userRole', 'admin');
-                localStorage.setItem('username', 'Admin');
                 window.location.href = 'pages/admin.html';
                 return;
             }
 
-            // Check if Regular User (Fake Email generation for Firebase Auth)
-            const fakeEmail = user + "@ffcbd.com";
+            btn.innerText = "অপেক্ষা করুন...";
+            btn.disabled = true;
+
+            // রেজিস্ট্রেশনের মতো একই লজিক: ইউজারনেম থেকে ইমেইল তৈরি
+            const cleanUser = user.toLowerCase().replace(/\s/g, '');
+            const fakeEmail = cleanUser + "@ffcbd.com";
 
             try {
+                // ২. Firebase Auth দিয়ে লগইন
                 const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, pass);
-                // Login Success
+                
+                // তথ্য লোকাল স্টোরেজে রাখা
                 localStorage.setItem('userRole', 'user');
                 localStorage.setItem('username', user);
-                localStorage.setItem('uid', userCredential.user.uid); // Save UID for DB access
+                localStorage.setItem('uid', userCredential.user.uid);
+
+                alert("লগইন সফল হয়েছে!");
                 window.location.href = 'pages/home.html';
+
             } catch (error) {
                 console.error(error);
-                if(error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+                btn.innerText = "লগইন করুন";
+                btn.disabled = false;
+                
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
                     alert("ভুল ইউজারনেম বা পাসওয়ার্ড!");
                 } else {
-                    alert("লগইন সমস্যা: " + error.message);
+                    alert("সমস্যা: " + error.message);
                 }
             }
         });
-
-        // Check if already logged in
-        window.onload = () => {
-            const role = localStorage.getItem('userRole');
-            if (role === 'admin') window.location.href = 'pages/admin.html';
-            if (role === 'user') window.location.href = 'pages/home.html';
-        };
     </script>
 </body>
 </html>
-
